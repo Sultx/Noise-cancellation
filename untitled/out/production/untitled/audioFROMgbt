@@ -1,0 +1,45 @@
+public static void main(String[] args) throws Exception {
+      // Load the audio file to be inverted and canceled out
+      AudioInputStream originalAudio = AudioSystem.getAudioInputStream(new File("original.wav"));
+
+      // Create a new byte array to store the inverted audio data
+      byte[] invertedData = new byte[originalAudio.available()];
+      byte[] originalData = new byte[originalAudio.available()];
+
+      // Read the original audio data into the byte array
+      originalAudio.read(originalData);
+
+      // Invert the audio data by multiplying it by -1
+      for(int i = 0; i < originalData.length; i++) {
+         invertedData[i] = (byte) (-1 * originalData[i]);
+      }
+
+      // Create a new AudioInputStream from the inverted audio data
+      AudioInputStream invertedAudio = new AudioInputStream(new ByteArrayInputStream(invertedData), originalAudio.getFormat(), originalAudio.getFrameLength());
+
+      // Create a new mixer to mix the original and inverted audio streams
+      Mixer mixer = AudioSystem.getMixer(null);
+      SourceDataLine line = (SourceDataLine) mixer.getLine(new DataLine.Info(SourceDataLine.class, originalAudio.getFormat()));
+
+      // Open the mixer and start playing the original and inverted audio streams simultaneously
+      line.open(originalAudio.getFormat());
+      line.start();
+
+      byte[] buffer = new byte[4096];
+      int n = 0;
+      while ((n = originalAudio.read(buffer, 0, buffer.length)) != -1) {
+         line.write(buffer, 0, n);
+         invertedAudio.read(buffer, 0, buffer.length);
+         for (int i = 0; i < n; i++) {
+            buffer[i] = (byte) (buffer[i] + invertedData[i]);
+         }
+      }
+
+      // Close the mixer and streams
+      line.drain();
+      line.stop();
+      line.close();
+      originalAudio.close();
+      invertedAudio.close();
+   }
+}
